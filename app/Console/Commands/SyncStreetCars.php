@@ -101,6 +101,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use App\Models\Car;
+use Illuminate\Support\Facades\Log;
 
 class SyncStreetCars extends Command
 {
@@ -109,6 +110,7 @@ class SyncStreetCars extends Command
 
     public function handle()
     {
+        Log::info('SyncStreetCars command started.');
         $apiKey = env('CAR_API_KEY');
 
         if (!$apiKey) {
