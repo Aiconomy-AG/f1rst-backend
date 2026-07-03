@@ -5,74 +5,87 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Car;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CarController extends Controller
 {
-    // Return all cars to the frontend
+    // 1. Filter the table data
     public function index()
     {
-        return Car::all();
+        $userId = Auth::id();
+
+        // Return cars that belong to the user OR have no user
+        return Car::whereNull('user_id')
+            ->orWhere('user_id', $userId)
+            ->get();
     }
 
-    public function show(Car $car)
-    {
-        return $car;
-    }
-
-    // Save a new car to the database
     public function store(Request $request)
     {
         $validated = $request->validate([
             'make' => 'required|string',
             'model' => 'required|string',
-            'power' => 'required|integer'
+            'power' => 'required|integer',
         ]);
 
-        return Car::create($validated);
+        // Automatically assign the car to the logged-in user
+        $validated['user_id'] = Auth::id();
+
+        $car = Car::create($validated);
+        return response()->json($car, 201);
     }
 
-    // Update an existing car
-    public function update(Request $request, Car $car)
+    public function update(Request $request, $id)
     {
+        $car = Car::findOrFail($id);
+
+        // Security: Prevent editing if the car belongs to someone else
+        if ($car->user_id !== null && $car->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $validated = $request->validate([
             'make' => 'required|string',
             'model' => 'required|string',
-            'power' => 'required|integer'
+            'power' => 'required|integer',
         ]);
 
         $car->update($validated);
-        return $car;
+        return response()->json($car);
     }
 
-    // Delete a car
-    public function destroy(Car $car)
+    public function destroy($id)
     {
+        $car = Car::findOrFail($id);
+
+        // Security: Prevent deletion if the car belongs to someone else
+        if ($car->user_id !== null && $car->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $car->delete();
-        return response()->json(['message' => 'Car deleted']);
+        return response()->json(null, 204);
     }
 
-    // Aggregate car counts by cylinder (power)
+    // 2. Filter the chart data
     public function cylinderStats()
     {
-        try {
-            // Use standard Eloquent to avoid raw SQL grouping issues
-            $stats = Car::select('power')
-                ->selectRaw('COUNT(*) as count')
-                ->groupBy('power')
-                ->orderBy('power', 'asc')
-                ->get()
-                ->map(function ($item) {
-                    return [
-                        'cylinders' => $item->power,
-                        'count' => (int) $item->count
-                    ];
-                });
+        $userId = Auth::id();
 
-            return response()->json($stats);
-        } catch (\Exception $e) {
-            // Log the actual error to your laravel.log file
-            \Log::error('CylinderStats Error: ' . $e->getMessage());
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
+        $stats = Car::whereNull('user_id')
+            ->orWhere('user_id', $userId)
+            ->select('power')
+            ->selectRaw('COUNT(*) as count')
+            ->groupBy('power')
+            ->orderBy('power', 'asc')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'cylinders' => $item->power,
+                    'count' => (int) $item->count
+                ];
+            });
+
+        return response()->json($stats);
     }
 }

@@ -1,12 +1,12 @@
 <?php
 
-use App\Http\Controllers\API\CarController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\API\CarController;
+use App\Http\Controllers\API\AuthController;
 
+Route::post('/login', [AuthController::class, 'login']);
 // routes/api.php
-// 1. Place the specific custom route ABOVE the resource route
-Route::get('/cars/cylinder-stats', [CarController::class, 'cylinderStats']);
-
-// 2. Then define your resource route
-Route::apiResource('cars', CarController::class);
+Route::middleware('auth:sanctum')->group(function(){
+    Route::get('/cars/cylinder-stats', [CarController::class, 'cylinderStats']);
+    Route::apiResource('cars', CarController::class);
+});

@@ -174,6 +174,7 @@ class SyncStreetCars extends Command
                         [
                             'make' => $carBrand,
                             'model' => $carModel,
+                            'user_id' => null,
                         ],
                         [
                             'power' => (int)$cylinders,
