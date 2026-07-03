@@ -14,6 +14,11 @@ class CarController extends Controller
         return Car::all();
     }
 
+    public function show(Car $car)
+    {
+        return $car;
+    }
+
     // Save a new car to the database
     public function store(Request $request)
     {
@@ -44,5 +49,30 @@ class CarController extends Controller
     {
         $car->delete();
         return response()->json(['message' => 'Car deleted']);
+    }
+
+    // Aggregate car counts by cylinder (power)
+    public function cylinderStats()
+    {
+        try {
+            // Use standard Eloquent to avoid raw SQL grouping issues
+            $stats = Car::select('power')
+                ->selectRaw('COUNT(*) as count')
+                ->groupBy('power')
+                ->orderBy('power', 'asc')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'cylinders' => $item->power,
+                        'count' => (int) $item->count
+                    ];
+                });
+
+            return response()->json($stats);
+        } catch (\Exception $e) {
+            // Log the actual error to your laravel.log file
+            \Log::error('CylinderStats Error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 }
